@@ -1,0 +1,4 @@
+- [ ] use [fxembed](https://github.com/FxEmbed/FxEmbed) for twitter links
+- [ ] instead of considering the entire message to be an url, extract the urls from the message
+- [ ] rather than deleting the messages, just ignore them
+- [ ] customization of linkding dashboard
