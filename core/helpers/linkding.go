@@ -22,7 +22,9 @@ func AddBookmarkToLinkding(cfg LinkdingConfig, url, title, description, poster, 
 		notes += fmt.Sprintf("\nAdditional description: %s", remainingText)
 	}
 
-	description = description[:MAX_DESCRIPTION_LENGTH] + "..."
+	if len(description) > MAX_DESCRIPTION_LENGTH {
+		description = description[:MAX_DESCRIPTION_LENGTH] + "..."
+	}
 
 	payload := map[string]any{
 		"url":         url,
