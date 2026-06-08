@@ -1,0 +1,168 @@
+:root {
+    /* Color palette (Rosé Pine Dawn) */
+    --gray-50: rgb(250, 244, 237);
+    /* base */
+    --gray-100: rgb(242, 233, 225);
+    /* overlay */
+    --gray-200: rgb(223, 218, 217);
+    /* highlight med */
+    --gray-300: rgb(206, 202, 205);
+    /* highlight high */
+    --gray-400: rgb(152, 147, 165);
+    /* muted */
+    --gray-500: rgb(121, 117, 147);
+    /* subtle */
+    --gray-600: rgb(110, 106, 134);
+    --gray-700: rgb(87, 82, 121);
+    /* text */
+    --gray-800: rgb(57, 53, 82);
+    --gray-900: rgb(35, 33, 54);
+
+    --primary-color: #907aa9;
+    /* iris */
+    --primary-color-highlight: #9d88b3;
+    --primary-color-shade: rgba(144, 122, 169, 0.075);
+
+    --primary-button-color: #907aa9;
+    --primary-button-color-highlight: #655c8f;
+
+    --alternative-color: #56949f;
+    /* foam */
+    --alternative-color-dark: #286983;
+    /* pine */
+
+    --success-color: #286983;
+    /* pine */
+    --success-color-highlight: #2f7a98;
+    --success-color-shade: rgba(40, 105, 131, 0.1);
+
+    --warning-color: #ea9d34;
+    /* gold */
+    --warning-color-highlight: #edaa50;
+    --warning-color-shade: rgba(234, 157, 52, 0.1);
+
+    --error-color: #b4637a;
+    /* love */
+    --error-color-highlight: #bd7388;
+    --error-color-shade: rgba(180, 99, 122, 0.1);
+
+    /* Core colors */
+    --text-color: var(--gray-700);
+    --secondary-text-color: var(--gray-500);
+    --tertiary-text-color: var(--gray-500);
+    --contrast-text-color: #fff;
+    --primary-text-color: #907aa9;
+    /* iris */
+
+    --link-color: var(--primary-text-color);
+    --secondary-link-color: rgba(144, 122, 169, 0.8);
+
+    --icon-color: var(--gray-500);
+
+    --border-color: var(--gray-300);
+    --secondary-border-color: var(--gray-200);
+
+    --body-color: rgb(250, 244, 237);
+    /* base */
+    --body-color-contrast: var(--gray-100);
+    --surface-color: #fffaf3;
+    /* surface */
+
+    /* Fonts */
+    --base-font-family:
+        "JetBrains Mono", ui-monospace, -apple-system, system-ui,
+        BlinkMacSystemFont, "Segoe UI", Roboto;
+    --mono-font-family:
+        "JetBrains Mono", ui-monospace, "SF Mono", "Segoe UI Mono", "Roboto Mono",
+        Menlo, Courier, monospace;
+    --fallback-font-family: "Helvetica Neue", sans-serif;
+    --cjk-zh-hans-font-family:
+        var(--base-font-family), "PingFang SC", "Hiragino Sans GB",
+        "Microsoft YaHei", var(--fallback-font-family);
+    --cjk-zh-hant-font-family:
+        var(--base-font-family), "PingFang TC", "Hiragino Sans CNS",
+        "Microsoft JhengHei", var(--fallback-font-family);
+    --cjk-jp-font-family:
+        var(--base-font-family), "Hiragino Sans", "Hiragino Kaku Gothic Pro",
+        "Yu Gothic", YuGothic, Meiryo, var(--fallback-font-family);
+    --cjk-ko-font-family:
+        var(--base-font-family), "Malgun Gothic", var(--fallback-font-family);
+    --body-font-family: var(--base-font-family), var(--fallback-font-family);
+
+    /* Unit sizes */
+    --unit-o: 0.05rem;
+    --unit-h: 0.1rem;
+    --unit-1: 0.2rem;
+    --unit-2: 0.4rem;
+    --unit-3: 0.6rem;
+    --unit-4: 0.8rem;
+    --unit-5: 1rem;
+    --unit-6: 1.2rem;
+    --unit-7: 1.4rem;
+    --unit-8: 1.6rem;
+    --unit-9: 1.8rem;
+    --unit-10: 2rem;
+    --unit-12: 2.4rem;
+    --unit-16: 3.2rem;
+
+    /* Font sizes */
+    --html-font-size: 20px;
+    --html-line-height: 1.5;
+    --font-size: 0.7rem;
+    --font-size-sm: 0.65rem;
+    --font-size-lg: 0.8rem;
+    --font-size-xl: 1rem;
+    --line-height: 1rem;
+
+    /* Sizes */
+    --layout-spacing: var(--unit-2);
+    --layout-spacing-sm: var(--unit-1);
+    --layout-spacing-lg: var(--unit-4);
+    --border-radius: 0;
+    --border-radius-lg: 0;
+    --border-width: var(--unit-o);
+    --border-width-lg: var(--unit-h);
+    --control-size: var(--unit-8);
+    --control-size-sm: var(--unit-6);
+    --control-size-lg: var(--unit-9);
+    --control-padding-x: var(--unit-2);
+    --control-padding-x-sm: calc(var(--unit-2) * 0.75);
+    --control-padding-x-lg: calc(var(--unit-2) * 1.5);
+    --control-padding-y: calc((var(--control-size) - var(--line-height)) / 2 - var(--border-width));
+    --control-padding-y-sm: calc((var(--control-size-sm) - var(--line-height)) / 2 - var(--border-width));
+    --control-padding-y-lg: calc((var(--control-size-lg) - var(--line-height)) / 2 - var(--border-width));
+    --control-icon-size: 0.8rem;
+
+    --control-width-xs: 180px;
+    --control-width-sm: 320px;
+    --control-width-md: 640px;
+    --control-width-lg: 960px;
+    --control-width-xl: 1280px;
+
+    /* Responsive breakpoints */
+    --size-xs: 480px;
+    --size-sm: 600px;
+    --size-md: 840px;
+    --size-lg: 960px;
+    --size-xl: 1280px;
+    --size-2x: 1440px;
+
+    --responsive-breakpoint: var(--size-xs);
+
+    /* Z-index */
+    --zindex-0: 1;
+    --zindex-1: 100;
+    --zindex-2: 200;
+    --zindex-3: 300;
+    --zindex-4: 400;
+
+    /* Focus */
+    --focus-outline: 2px solid var(--primary-color);
+    --focus-outline-offset: 2px;
+
+    /* Shadows */
+    --box-shadow-xs: rgba(0, 0, 0, 0.05) 0px 1px 2px 0px;
+    --box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --box-shadow-lg:
+        0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
