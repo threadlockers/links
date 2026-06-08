@@ -9,6 +9,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/threadlockers/links/core/config"
 	"github.com/threadlockers/links/core/helpers"
+	"github.com/threadlockers/links/core/utils"
 )
 
 type Bot struct {
@@ -112,10 +113,12 @@ func (b *Bot) onMessageReactionAdd(s *discordgo.Session, r *discordgo.MessageRea
 		}
 	}
 
-	// it doesn't matter if description is present. title is much more important
 	if title == "" {
-		log.Printf("failed to extract title of the url: %s", url)
-		return
+		title, err = utils.GetPageTitle(url)
+		if err != nil {
+			log.Printf("failed to extract title of the url: %s", url)
+			return
+		}
 	}
 
 	if err := helpers.AddBookmarkToLinkding(helpers.LinkdingConfig{
