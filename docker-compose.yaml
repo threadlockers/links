@@ -1,0 +1,25 @@
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: linky-winky:latest
+    env_file:
+      - .env
+    depends_on:
+      - frontend
+
+  frontend:
+    build:
+      context: ./linkding
+      dockerfile: docker/alpine.Dockerfile
+    image: linkding:latest
+    env_file:
+      - .env
+    ports:
+      - "9090:9090"
+    volumes:
+      - linkding_data:/etc/linkding/data
+
+volumes:
+  linkding_data:
