@@ -2,7 +2,6 @@ package bot
 
 import (
 	"log"
-	"net/url"
 	"slices"
 	"strings"
 
@@ -32,7 +31,6 @@ func New(cfg config.EnvCfg) (*Bot, error) {
 	}
 
 	session.AddHandler(b.onReady)
-	session.AddHandler(b.onMessageCreate)
 	session.AddHandler(b.onMessageReactionAdd)
 
 	return b, nil
@@ -52,28 +50,6 @@ func (b *Bot) Stop() {
 
 func (b *Bot) onReady(_ *discordgo.Session, event *discordgo.Ready) {
 	log.Printf("logged in as %s\n", event.User.Username)
-}
-
-func (b *Bot) onMessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
-	if m.Author == nil || m.Author.Bot {
-		return
-	}
-
-	if m.ChannelID != b.cfg.LinksChannelId {
-		return
-	}
-
-	if _, err := url.ParseRequestURI(m.Content); err != nil {
-		linkdingAdminUsers := strings.Split(b.cfg.LinkdingAdminUsers, ",")
-		if slices.Contains(linkdingAdminUsers, m.Author.ID) {
-			return
-		}
-
-		if err := s.ChannelMessageDelete(m.ChannelID, m.ID); err != nil {
-			log.Printf("failed to delete message %s in channel %s: %s", m.ID, m.ChannelID, err)
-			return
-		}
-	}
 }
 
 func (b *Bot) onMessageReactionAdd(s *discordgo.Session, r *discordgo.MessageReactionAdd) {
