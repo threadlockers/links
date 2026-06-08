@@ -14,12 +14,21 @@ type LinkdingConfig struct {
 	ApiToken   string
 }
 
-func AddBookmarkToLinkding(cfg LinkdingConfig, url, title, description, poster string) error {
+var MAX_DESCRIPTION_LENGTH = 200
+
+func AddBookmarkToLinkding(cfg LinkdingConfig, url, title, description, poster, remainingText string) error {
+	notes := fmt.Sprintf("Posted by: @%s", poster)
+	if remainingText != "" {
+		notes += fmt.Sprintf("\nAdditional description: %s", remainingText)
+	}
+
+	description = description[:MAX_DESCRIPTION_LENGTH] + "..."
+
 	payload := map[string]any{
 		"url":         url,
 		"title":       title,
 		"description": description,
-		"notes":       fmt.Sprintf("Posted by: @%s", poster),
+		"notes":       notes,
 		"shared":      true,
 	}
 	jsonBody, _ := json.Marshal(payload)

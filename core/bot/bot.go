@@ -100,21 +100,35 @@ func (b *Bot) onMessageReactionAdd(s *discordgo.Session, r *discordgo.MessageRea
 		return
 	}
 
-	url := msg.Content
+	url, remaining := utils.ExtractUrlAndRemainingText(msg.Content)
+	if url == nil {
+		return
+	}
+
 	title := ""
 	description := ""
 	poster := msg.Author.Username
 
-	for _, embed := range msg.Embeds {
-		if embed.URL == url {
-			title = embed.Title
-			description = embed.Description
-			break
+	twitterHosts := []string{"x.com", "twitter.com", "www.x.com", "www.twitter.com"}
+
+	if slices.Contains(twitterHosts, url.Host) {
+		title, description, err = utils.GetTitleAndDescriptionForTweet(url)
+		if err != nil {
+			log.Printf("failed to extract tweet info from fxtwitter: %s", err)
+			return
+		}
+	} else {
+		for _, embed := range msg.Embeds {
+			if embed.URL == url.String() {
+				title = embed.Title
+				description = embed.Description
+				break
+			}
 		}
 	}
 
 	if title == "" {
-		title, err = utils.GetPageTitle(url)
+		title, err = utils.GetPageTitle(url.String())
 		if err != nil {
 			log.Printf("failed to extract title of the url: %s", url)
 			return
@@ -124,7 +138,7 @@ func (b *Bot) onMessageReactionAdd(s *discordgo.Session, r *discordgo.MessageRea
 	if err := helpers.AddBookmarkToLinkding(helpers.LinkdingConfig{
 		BaseApiUrl: b.cfg.LinkdingBaseUrl,
 		ApiToken:   b.cfg.LinkdingApiToken,
-	}, url, title, description, poster); err != nil {
+	}, url.String(), title, description, poster, remaining); err != nil {
 		log.Printf("failed to add to linkding: %s", err)
 		return
 	}
