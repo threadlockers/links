@@ -105,9 +105,9 @@ func (b *Bot) onMessageReactionAdd(s *discordgo.Session, r *discordgo.MessageRea
 
 	if title == "" {
 		title, err = utils.GetPageTitle(url.String())
-		if err != nil {
-			log.Printf("failed to extract title of the url: %s", url)
-			return
+		if err != nil || title == "" {
+			log.Printf("failed to extract title of the url, falling back to url: %s", url)
+			title = url.String()
 		}
 	}
 
