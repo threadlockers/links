@@ -16,6 +16,8 @@ type Bot struct {
 	cfg     config.EnvCfg
 }
 
+var TWITTER_HOSTS = []string{"x.com", "twitter.com", "www.x.com", "www.twitter.com"}
+
 func New(cfg config.EnvCfg) (*Bot, error) {
 	session, err := discordgo.New("Bot " + cfg.DiscordBotToken)
 	if err != nil {
@@ -81,13 +83,19 @@ func (b *Bot) onMessageReactionAdd(s *discordgo.Session, r *discordgo.MessageRea
 		return
 	}
 
+	// convert arxiv pdf links to abstract links to properly fetch title
+	if url.Host == "arxiv.org" && strings.Contains(url.Path, "/pdf/") {
+		url.Path = strings.Replace(url.Path, "/pdf/", "/abs/", 1)
+	}
+
 	title := ""
 	description := ""
 	poster := msg.Author.Username
 
-	twitterHosts := []string{"x.com", "twitter.com", "www.x.com", "www.twitter.com"}
+	if strings.Contains(url.String(), "arxiv.org/pdf") {
+	}
 
-	if slices.Contains(twitterHosts, url.Host) {
+	if slices.Contains(TWITTER_HOSTS, url.Host) {
 		title, description, err = utils.GetTitleAndDescriptionForTweet(url)
 		if err != nil {
 			log.Printf("failed to extract tweet info from fxtwitter: %s", err)
@@ -104,6 +112,7 @@ func (b *Bot) onMessageReactionAdd(s *discordgo.Session, r *discordgo.MessageRea
 	}
 
 	if title == "" {
+
 		title, err = utils.GetPageTitle(url.String())
 		if err != nil || title == "" {
 			log.Printf("failed to extract title of the url, falling back to url: %s", url)
