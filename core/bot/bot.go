@@ -20,6 +20,10 @@ var TWITTER_HOSTS = []string{"x.com", "twitter.com", "www.x.com", "www.twitter.c
 var LINK_EMOJI = "🔗"
 var CHECKMARK_EMOJI = "✅"
 
+// EMOJI_TAG_MAP maps Discord emoji reactions to linkding tag names.
+// Reacting with one of these emojis on a bookmarked message will add the tag.
+var EMOJI_TAG_MAP = config.EmojiTagMap
+
 func New(cfg config.EnvCfg) (*Bot, error) {
 	session, err := discordgo.New("Bot " + cfg.DiscordBotToken)
 	if err != nil {
@@ -36,6 +40,8 @@ func New(cfg config.EnvCfg) (*Bot, error) {
 
 	session.AddHandler(b.onReady)
 	session.AddHandler(b.onMessageReactionAdd)
+	session.AddHandler(b.onMessageReactionAddTag)
+	session.AddHandler(b.onMessageReactionRemoveTag)
 
 	return b, nil
 }
@@ -135,4 +141,130 @@ func (b *Bot) onMessageReactionAdd(s *discordgo.Session, r *discordgo.MessageRea
 		log.Printf("failed to add checkmark emoji to message %s: %s", r.MessageID, err)
 		return
 	}
+}
+
+func (b *Bot) onMessageReactionAddTag(s *discordgo.Session, r *discordgo.MessageReactionAdd) {
+	if r.ChannelID != b.cfg.LinksChannelId {
+		return
+	}
+
+	linkdingAdminUsers := strings.Split(b.cfg.LinkdingAdminUsers, ",")
+	if !slices.Contains(linkdingAdminUsers, r.UserID) {
+		return
+	}
+
+	if r.Emoji.Name == LINK_EMOJI {
+		return
+	}
+
+	tagName, ok := EMOJI_TAG_MAP[r.Emoji.Name]
+	if !ok {
+		return
+	}
+
+	msg, err := s.ChannelMessage(r.ChannelID, r.MessageID)
+	if err != nil {
+		log.Printf("failed to fetch message %s: %s", r.MessageID, err)
+		return
+	}
+	if msg.Author == nil || msg.Author.Bot {
+		return
+	}
+
+	url, _ := utils.ExtractUrlAndRemainingText(msg.Content)
+	if url == nil {
+		return
+	}
+
+	linkdingCfg := helpers.LinkdingConfig{
+		BaseApiUrl: b.cfg.LinkdingBaseUrl,
+		ApiToken:   b.cfg.LinkdingApiToken,
+	}
+
+	bookmark, err := helpers.GetBookmarkByUrl(linkdingCfg, url.String())
+	if err != nil {
+		log.Printf("failed to look up bookmark: %s", err)
+		return
+	}
+	if bookmark == nil {
+		log.Printf("bookmark not found for url %s, skipping tag", url.String())
+		return
+	}
+
+	mergedTags := bookmark.TagNames
+	alreadyHasTag := slices.Contains(mergedTags, tagName)
+	if alreadyHasTag {
+		log.Printf("bookmark %d already has tag %q, skipping", bookmark.ID, tagName)
+		return
+	}
+	mergedTags = append(mergedTags, tagName)
+
+	if err := helpers.UpdateBookmarkTags(linkdingCfg, bookmark.ID, mergedTags); err != nil {
+		log.Printf("failed to update tags on bookmark %d: %s", bookmark.ID, err)
+		return
+	}
+
+	log.Printf("added tag %q to bookmark %d (%s)", tagName, bookmark.ID, url.String())
+
+	if err := b.session.MessageReactionAdd(r.ChannelID, r.MessageID, CHECKMARK_EMOJI); err != nil {
+		log.Printf("failed to add checkmark emoji to message %s: %s", r.MessageID, err)
+	}
+}
+
+func (b *Bot) onMessageReactionRemoveTag(s *discordgo.Session, r *discordgo.MessageReactionRemove) {
+	if r.ChannelID != b.cfg.LinksChannelId {
+		return
+	}
+
+	linkdingAdminUsers := strings.Split(b.cfg.LinkdingAdminUsers, ",")
+	if !slices.Contains(linkdingAdminUsers, r.UserID) {
+		return
+	}
+
+	tagName, ok := EMOJI_TAG_MAP[r.Emoji.Name]
+	if !ok {
+		return
+	}
+
+	msg, err := s.ChannelMessage(r.ChannelID, r.MessageID)
+	if err != nil {
+		log.Printf("failed to fetch message %s: %s", r.MessageID, err)
+		return
+	}
+	if msg.Author == nil || msg.Author.Bot {
+		return
+	}
+
+	url, _ := utils.ExtractUrlAndRemainingText(msg.Content)
+	if url == nil {
+		return
+	}
+
+	linkdingCfg := helpers.LinkdingConfig{
+		BaseApiUrl: b.cfg.LinkdingBaseUrl,
+		ApiToken:   b.cfg.LinkdingApiToken,
+	}
+
+	bookmark, err := helpers.GetBookmarkByUrl(linkdingCfg, url.String())
+	if err != nil {
+		log.Printf("failed to look up bookmark: %s", err)
+		return
+	}
+	if bookmark == nil {
+		return
+	}
+
+	if !slices.Contains(bookmark.TagNames, tagName) {
+		return
+	}
+	updatedTags := slices.DeleteFunc(bookmark.TagNames, func(t string) bool {
+		return t == tagName
+	})
+
+	if err := helpers.UpdateBookmarkTags(linkdingCfg, bookmark.ID, updatedTags); err != nil {
+		log.Printf("failed to update tags on bookmark %d: %s", bookmark.ID, err)
+		return
+	}
+
+	log.Printf("removed tag %q from bookmark %d (%s)", tagName, bookmark.ID, url.String())
 }
