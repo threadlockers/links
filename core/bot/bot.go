@@ -20,8 +20,6 @@ var TWITTER_HOSTS = []string{"x.com", "twitter.com", "www.x.com", "www.twitter.c
 var LINK_EMOJI = "🔗"
 var CHECKMARK_EMOJI = "✅"
 
-// EMOJI_TAG_MAP maps Discord emoji reactions to linkding tag names.
-// Reacting with one of these emojis on a bookmarked message will add the tag.
 var EMOJI_TAG_MAP = config.EmojiTagMap
 
 func New(cfg config.EnvCfg) (*Bot, error) {
@@ -62,13 +60,20 @@ func (b *Bot) onReady(_ *discordgo.Session, event *discordgo.Ready) {
 	log.Printf("logged in as %s\n", event.User.Username)
 }
 
+func (b *Bot) isAdmin(userID string) bool {
+	admins := strings.Split(b.cfg.LinkdingAdminUsers, ",")
+	return slices.Contains(admins, userID)
+}
+
+func (b *Bot) isLinksChannel(channelID string) bool {
+	return channelID == b.cfg.LinksChannelId
+}
+
 func (b *Bot) onMessageReactionAdd(s *discordgo.Session, r *discordgo.MessageReactionAdd) {
-	if r.ChannelID != b.cfg.LinksChannelId {
+	if !b.isLinksChannel(r.ChannelID) {
 		return
 	}
-
-	linkdingAdminUsers := strings.Split(b.cfg.LinkdingAdminUsers, ",")
-	if !slices.Contains(linkdingAdminUsers, r.UserID) {
+	if !b.isAdmin(r.UserID) {
 		return
 	}
 
@@ -144,12 +149,10 @@ func (b *Bot) onMessageReactionAdd(s *discordgo.Session, r *discordgo.MessageRea
 }
 
 func (b *Bot) onMessageReactionAddTag(s *discordgo.Session, r *discordgo.MessageReactionAdd) {
-	if r.ChannelID != b.cfg.LinksChannelId {
+	if !b.isLinksChannel(r.ChannelID) {
 		return
 	}
-
-	linkdingAdminUsers := strings.Split(b.cfg.LinkdingAdminUsers, ",")
-	if !slices.Contains(linkdingAdminUsers, r.UserID) {
+	if !b.isAdmin(r.UserID) {
 		return
 	}
 
@@ -212,12 +215,10 @@ func (b *Bot) onMessageReactionAddTag(s *discordgo.Session, r *discordgo.Message
 }
 
 func (b *Bot) onMessageReactionRemoveTag(s *discordgo.Session, r *discordgo.MessageReactionRemove) {
-	if r.ChannelID != b.cfg.LinksChannelId {
+	if !b.isLinksChannel(r.ChannelID) {
 		return
 	}
-
-	linkdingAdminUsers := strings.Split(b.cfg.LinkdingAdminUsers, ",")
-	if !slices.Contains(linkdingAdminUsers, r.UserID) {
+	if !b.isAdmin(r.UserID) {
 		return
 	}
 
