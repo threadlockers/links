@@ -19,6 +19,7 @@ type Bot struct {
 var TWITTER_HOSTS = []string{"x.com", "twitter.com", "www.x.com", "www.twitter.com"}
 var LINK_EMOJI = "🔗"
 var CHECKMARK_EMOJI = "✅"
+var HOURGLASS_EMOJI = "⏳"
 
 var EMOJI_TAG_MAP = config.EmojiTagMap
 
@@ -69,6 +70,33 @@ func (b *Bot) isLinksChannel(channelID string) bool {
 	return channelID == b.cfg.LinksChannelId
 }
 
+func (b *Bot) addReaction(channelID, messageID, emoji string) {
+	if err := b.session.MessageReactionAdd(channelID, messageID, emoji); err != nil {
+		log.Printf("failed to add %s to message %s: %s", emoji, messageID, err)
+	}
+}
+
+func (b *Bot) removeReaction(channelID, messageID, emoji, userID string) {
+	if err := b.session.MessageReactionRemove(channelID, messageID, emoji, userID); err != nil {
+		log.Printf("failed to remove %s from message %s: %s", emoji, messageID, err)
+	}
+}
+
+func (b *Bot) removeBotReaction(channelID, messageID, emoji string) {
+	if err := b.session.MessageReactionRemove(channelID, messageID, emoji, "@me"); err != nil {
+		log.Printf("failed to remove bot %s from message %s: %s", emoji, messageID, err)
+	}
+}
+
+func (b *Bot) hasReaction(msg *discordgo.Message, emoji string) bool {
+	for _, r := range msg.Reactions {
+		if r.Emoji.Name == emoji {
+			return true
+		}
+	}
+	return false
+}
+
 func (b *Bot) onMessageReactionAdd(s *discordgo.Session, r *discordgo.MessageReactionAdd) {
 	if !b.isLinksChannel(r.ChannelID) {
 		return
@@ -87,12 +115,18 @@ func (b *Bot) onMessageReactionAdd(s *discordgo.Session, r *discordgo.MessageRea
 		return
 	}
 
-	if r.Emoji.Name != "🔗" {
+	if r.Emoji.Name != LINK_EMOJI {
 		return
 	}
 
+	if b.hasReaction(msg, CHECKMARK_EMOJI) {
+		b.removeBotReaction(r.ChannelID, r.MessageID, CHECKMARK_EMOJI)
+	}
+	b.addReaction(r.ChannelID, r.MessageID, HOURGLASS_EMOJI)
+
 	url, remaining := utils.ExtractUrlAndRemainingText(msg.Content)
 	if url == nil {
+		b.removeBotReaction(r.ChannelID, r.MessageID, HOURGLASS_EMOJI)
 		return
 	}
 
@@ -109,6 +143,7 @@ func (b *Bot) onMessageReactionAdd(s *discordgo.Session, r *discordgo.MessageRea
 		title, description, err = utils.GetTitleAndDescriptionForTweet(url)
 		if err != nil {
 			log.Printf("failed to extract tweet info from fxtwitter: %s", err)
+			b.removeBotReaction(r.ChannelID, r.MessageID, HOURGLASS_EMOJI)
 			return
 		}
 	} else {
@@ -134,18 +169,13 @@ func (b *Bot) onMessageReactionAdd(s *discordgo.Session, r *discordgo.MessageRea
 		ApiToken:   b.cfg.LinkdingApiToken,
 	}, url.String(), title, description, poster, remaining); err != nil {
 		log.Printf("failed to add to linkding: %s", err)
+		b.removeBotReaction(r.ChannelID, r.MessageID, HOURGLASS_EMOJI)
 		return
 	}
 
-	if err := b.session.MessageReactionRemove(r.ChannelID, r.MessageID, LINK_EMOJI, r.UserID); err != nil {
-		log.Printf("failed to remove link emoji from message %s: %s", r.MessageID, err)
-		return
-	}
-
-	if err := b.session.MessageReactionAdd(r.ChannelID, r.MessageID, CHECKMARK_EMOJI); err != nil {
-		log.Printf("failed to add checkmark emoji to message %s: %s", r.MessageID, err)
-		return
-	}
+	b.removeReaction(r.ChannelID, r.MessageID, LINK_EMOJI, r.UserID)
+	b.removeBotReaction(r.ChannelID, r.MessageID, HOURGLASS_EMOJI)
+	b.addReaction(r.ChannelID, r.MessageID, CHECKMARK_EMOJI)
 }
 
 func (b *Bot) onMessageReactionAddTag(s *discordgo.Session, r *discordgo.MessageReactionAdd) {
@@ -174,8 +204,14 @@ func (b *Bot) onMessageReactionAddTag(s *discordgo.Session, r *discordgo.Message
 		return
 	}
 
+	if b.hasReaction(msg, CHECKMARK_EMOJI) {
+		b.removeBotReaction(r.ChannelID, r.MessageID, CHECKMARK_EMOJI)
+	}
+	b.addReaction(r.ChannelID, r.MessageID, HOURGLASS_EMOJI)
+
 	url, _ := utils.ExtractUrlAndRemainingText(msg.Content)
 	if url == nil {
+		b.removeBotReaction(r.ChannelID, r.MessageID, HOURGLASS_EMOJI)
 		return
 	}
 
@@ -187,31 +223,33 @@ func (b *Bot) onMessageReactionAddTag(s *discordgo.Session, r *discordgo.Message
 	bookmark, err := helpers.GetBookmarkByUrl(linkdingCfg, url.String())
 	if err != nil {
 		log.Printf("failed to look up bookmark: %s", err)
+		b.removeBotReaction(r.ChannelID, r.MessageID, HOURGLASS_EMOJI)
 		return
 	}
 	if bookmark == nil {
 		log.Printf("bookmark not found for url %s, skipping tag", url.String())
+		b.removeBotReaction(r.ChannelID, r.MessageID, HOURGLASS_EMOJI)
 		return
 	}
 
 	mergedTags := bookmark.TagNames
-	alreadyHasTag := slices.Contains(mergedTags, tagName)
-	if alreadyHasTag {
+	if slices.Contains(mergedTags, tagName) {
 		log.Printf("bookmark %d already has tag %q, skipping", bookmark.ID, tagName)
+		b.removeBotReaction(r.ChannelID, r.MessageID, HOURGLASS_EMOJI)
+		b.addReaction(r.ChannelID, r.MessageID, CHECKMARK_EMOJI)
 		return
 	}
 	mergedTags = append(mergedTags, tagName)
 
 	if err := helpers.UpdateBookmarkTags(linkdingCfg, bookmark.ID, mergedTags); err != nil {
 		log.Printf("failed to update tags on bookmark %d: %s", bookmark.ID, err)
+		b.removeBotReaction(r.ChannelID, r.MessageID, HOURGLASS_EMOJI)
 		return
 	}
 
 	log.Printf("added tag %q to bookmark %d (%s)", tagName, bookmark.ID, url.String())
-
-	if err := b.session.MessageReactionAdd(r.ChannelID, r.MessageID, CHECKMARK_EMOJI); err != nil {
-		log.Printf("failed to add checkmark emoji to message %s: %s", r.MessageID, err)
-	}
+	b.removeBotReaction(r.ChannelID, r.MessageID, HOURGLASS_EMOJI)
+	b.addReaction(r.ChannelID, r.MessageID, CHECKMARK_EMOJI)
 }
 
 func (b *Bot) onMessageReactionRemoveTag(s *discordgo.Session, r *discordgo.MessageReactionRemove) {
@@ -236,8 +274,14 @@ func (b *Bot) onMessageReactionRemoveTag(s *discordgo.Session, r *discordgo.Mess
 		return
 	}
 
+	if b.hasReaction(msg, CHECKMARK_EMOJI) {
+		b.removeBotReaction(r.ChannelID, r.MessageID, CHECKMARK_EMOJI)
+	}
+	b.addReaction(r.ChannelID, r.MessageID, HOURGLASS_EMOJI)
+
 	url, _ := utils.ExtractUrlAndRemainingText(msg.Content)
 	if url == nil {
+		b.removeBotReaction(r.ChannelID, r.MessageID, HOURGLASS_EMOJI)
 		return
 	}
 
@@ -249,13 +293,17 @@ func (b *Bot) onMessageReactionRemoveTag(s *discordgo.Session, r *discordgo.Mess
 	bookmark, err := helpers.GetBookmarkByUrl(linkdingCfg, url.String())
 	if err != nil {
 		log.Printf("failed to look up bookmark: %s", err)
+		b.removeBotReaction(r.ChannelID, r.MessageID, HOURGLASS_EMOJI)
 		return
 	}
 	if bookmark == nil {
+		b.removeBotReaction(r.ChannelID, r.MessageID, HOURGLASS_EMOJI)
 		return
 	}
 
 	if !slices.Contains(bookmark.TagNames, tagName) {
+		b.removeBotReaction(r.ChannelID, r.MessageID, HOURGLASS_EMOJI)
+		b.addReaction(r.ChannelID, r.MessageID, CHECKMARK_EMOJI)
 		return
 	}
 	updatedTags := slices.DeleteFunc(bookmark.TagNames, func(t string) bool {
@@ -264,8 +312,11 @@ func (b *Bot) onMessageReactionRemoveTag(s *discordgo.Session, r *discordgo.Mess
 
 	if err := helpers.UpdateBookmarkTags(linkdingCfg, bookmark.ID, updatedTags); err != nil {
 		log.Printf("failed to update tags on bookmark %d: %s", bookmark.ID, err)
+		b.removeBotReaction(r.ChannelID, r.MessageID, HOURGLASS_EMOJI)
 		return
 	}
 
 	log.Printf("removed tag %q from bookmark %d (%s)", tagName, bookmark.ID, url.String())
+	b.removeBotReaction(r.ChannelID, r.MessageID, HOURGLASS_EMOJI)
+	b.addReaction(r.ChannelID, r.MessageID, CHECKMARK_EMOJI)
 }
