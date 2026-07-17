@@ -30,7 +30,8 @@ func New(cfg config.EnvCfg) (*Bot, error) {
 	}
 
 	session.Identify.Intents = discordgo.IntentGuildMessages |
-		discordgo.IntentGuildMessageReactions
+		discordgo.IntentGuildMessageReactions |
+		discordgo.IntentMessageContent
 
 	b := &Bot{
 		session: session,
@@ -97,6 +98,17 @@ func (b *Bot) hasReaction(msg *discordgo.Message, emoji string) bool {
 	return false
 }
 
+// contentMessage returns message_snapshots[0].message for fwds else msg
+func contentMessage(msg *discordgo.Message) *discordgo.Message {
+	for _, snapshot := range msg.MessageSnapshots {
+		if snapshot.Message != nil {
+			return snapshot.Message
+		}
+	}
+
+	return msg
+}
+
 func (b *Bot) onMessageReactionAdd(s *discordgo.Session, r *discordgo.MessageReactionAdd) {
 	if !b.isLinksChannel(r.ChannelID) {
 		return
@@ -124,7 +136,8 @@ func (b *Bot) onMessageReactionAdd(s *discordgo.Session, r *discordgo.MessageRea
 	}
 	b.addReaction(r.ChannelID, r.MessageID, HOURGLASS_EMOJI)
 
-	url, remaining := utils.ExtractUrlAndRemainingText(msg.Content)
+	contentMsg := contentMessage(msg)
+	url, remaining := utils.ExtractUrlAndRemainingText(contentMsg.Content)
 	if url == nil {
 		b.removeBotReaction(r.ChannelID, r.MessageID, HOURGLASS_EMOJI)
 		return
@@ -147,7 +160,7 @@ func (b *Bot) onMessageReactionAdd(s *discordgo.Session, r *discordgo.MessageRea
 			return
 		}
 	} else {
-		for _, embed := range msg.Embeds {
+		for _, embed := range contentMsg.Embeds {
 			if embed.URL == url.String() {
 				title = embed.Title
 				description = embed.Description
@@ -209,7 +222,7 @@ func (b *Bot) onMessageReactionAddTag(s *discordgo.Session, r *discordgo.Message
 	}
 	b.addReaction(r.ChannelID, r.MessageID, HOURGLASS_EMOJI)
 
-	url, _ := utils.ExtractUrlAndRemainingText(msg.Content)
+	url, _ := utils.ExtractUrlAndRemainingText(contentMessage(msg).Content)
 	if url == nil {
 		b.removeBotReaction(r.ChannelID, r.MessageID, HOURGLASS_EMOJI)
 		return
@@ -279,7 +292,7 @@ func (b *Bot) onMessageReactionRemoveTag(s *discordgo.Session, r *discordgo.Mess
 	}
 	b.addReaction(r.ChannelID, r.MessageID, HOURGLASS_EMOJI)
 
-	url, _ := utils.ExtractUrlAndRemainingText(msg.Content)
+	url, _ := utils.ExtractUrlAndRemainingText(contentMessage(msg).Content)
 	if url == nil {
 		b.removeBotReaction(r.ChannelID, r.MessageID, HOURGLASS_EMOJI)
 		return
